@@ -35,5 +35,5 @@ func main(){
 }
 
 func routes(router *gin.Engine) {
-
+	
 }
