@@ -1,0 +1,1 @@
+Real time private chat server built using Golang, MongoDB and WebSockets
