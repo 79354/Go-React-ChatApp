@@ -16,3 +16,14 @@ func NewLobby() *Lobby{
 		unregister: make(chan *Client),
 	}
 }
+
+func (lobby *Lobby) Run(){
+	for {
+		select	{
+		case client := <- lobby.register:
+			
+		case client := <- lobby.unregister:
+			
+		}
+	}
+}

@@ -6,14 +6,15 @@ import (
 	"os"
 
 	"chat-app/config"
+	"chat-app/handlers"
 	"chat-app/utils"
 
 	"github.com/gin-gonic/gin"
-	"github.com/joho/gotdotenv"
+	"github.com/joho/godotenv"
 )
 
 func main(){
-	err := gotdotenv.Load()
+	err := godotenv.Load()
 	if err != nil{
 		log.Fatal("Error loading the environment")
 	}
@@ -35,5 +36,17 @@ func main(){
 }
 
 func routes(router *gin.Engine) {
-	
+	lobby := handlers.NewLobby()
+	go lobby.Run()
+
+	router.GET("/", handlers.RenderHome)
+
+	router.GET("/isUsernameAvailable/:username", handlers.IsUsernameAvailable)
+
+	router.POST("/login", handlers.Login)
+	router.POST("/registration", handlers.Registration)
+
+	router.GET("/UserSessionCheck/:userID", handlers.UserSessionCheck)
+	router.GET("/getConversation/:toUserID/:fromUserID", handlers.GetMessagesHandler)
+
 }

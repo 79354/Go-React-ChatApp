@@ -1,7 +1,7 @@
 package config
 
 import (
-	"github.com/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var Client *mongo.Client
@@ -11,5 +11,5 @@ func ConnectDatabase(){
 }
 
 func DisConnectDB(){
-	
+
 }
