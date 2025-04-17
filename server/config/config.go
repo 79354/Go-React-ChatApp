@@ -19,17 +19,17 @@ func ConnectDatabase(){
 	defer cancel()
 
 	dbURI := os.Getenv("DB_URL")
-	options := options.Client().ApplyURI(dbURI)
 	if dbURI == ""{
-		dbURI = "27017"
+		dbURI = "mongodb://localhost:27017"
 	}
+	options := options.Client().ApplyURI(dbURI)
 
 	client, err := mongo.Connect(ctx, options)
 	if err != nil{
 		log.Fatal("Error connecting to mongodb", err)
 	}
 
-	if client.Ping(ctx, nil); err != nil{
+	if err = client.Ping(ctx, nil); err != nil{
 		log.Fatal("Can't ping the client", err)
 	}
 

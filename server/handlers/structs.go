@@ -56,3 +56,10 @@ type MessagePayload struct {
 	ToUserID   string `json:"to_user_id" binding:"required"`
 	Message    string `json:"message" binding:"required"`
 }
+
+type APIResponse struct{
+	Code 	 int          `json:"code"`
+	Status   string       `json:"status"`
+	Message  string       `json:"message"`
+	Response interface{}  `json:"response"`
+}

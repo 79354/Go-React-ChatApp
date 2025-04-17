@@ -39,14 +39,14 @@ func routes(router *gin.Engine) {
 	lobby := handlers.NewLobby()
 	go lobby.Run()
 
-	router.GET("/", handlers.RenderHome)
+	router.GET("/", handlers.RenderHome())
 
-	router.GET("/isUsernameAvailable/:username", handlers.IsUsernameAvailable)
+	router.GET("/isUsernameAvailable/:username", handlers.IsUsernameAvailable())
 
-	router.POST("/login", handlers.Login)
-	router.POST("/registration", handlers.Registration)
+	router.POST("/login", handlers.Login())
+	router.POST("/registration", handlers.Registration())
 
-	router.GET("/UserSessionCheck/:userID", handlers.UserSessionCheck)
-	router.GET("/getConversation/:toUserID/:fromUserID", handlers.GetMessagesHandler)
+	router.GET("/UserSessionCheck/:userID", handlers.UserSessionCheck())
+	router.GET("/getConversation/:toUserID/:fromUserID", handlers.GetMessagesHandler())
 
 }
