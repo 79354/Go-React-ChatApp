@@ -39,7 +39,25 @@ func IsUsernameAvailable() gin.HandlerFunc{
 
 func Login() gin.HandlerFunc{
 	return func(c *gin.Context){
-		
+		var userDetails UserDetails
+
+		if err := c.ShouldBindJSON(&userDetails); err != nil{
+			c.JSON(http.StatusBadRequest, APIResponse{
+				Code:     http.StatusBadRequest,
+				Status:   http.StatusText(http.StatusBadRequest),
+				Message:  constants.UsernameAndPasswordCantBeEmpty,
+				Response: nil,
+			})
+			return
+		}
+
+		// succesfil login
+		c.JSON(http.StatusOK, APIResponse{
+			Code: http.StatusOK,
+			Status: http.StatusText(http.StatusOK),
+			Message: constants.UserLoginCompleted,
+			Response: userDetails,
+		})
 	}
 }
 
