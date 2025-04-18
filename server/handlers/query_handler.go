@@ -12,10 +12,27 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func UpdateUserOnlineStatusByUserID(userId, status string) error{
+	docID, err := primitive.ObjectIDFromHex(userId)
+	if err != nil{
+		errors.New("unable to extract Id from Hex Id")
+	}
 
+	collection := config.Client.Database(os.Getenv("MONGODB_DATABASE")).Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+	_, err = collection.UpdateOne(ctx, 
+	bson.M{"_id": docID},
+	bson.M{"$set": bson.M{"online": status}},
+	)
+	defer cancel()
+	if err != nil{
+		return errors.New(constants.ServerFailedResponse)
+	}
+	return nil
 }
 
 func GetUserByUsername(username string) UserDetails{
@@ -120,29 +137,108 @@ func RegisterQueryHandler(userDetails RegistrationRequest) (string, error){
 	}
 }
 
-func GetAllOnlineUsers(userID string) []UserDetails{
-	var onlineUsers []UserDetails
+func GetAllOnlineUsers(userID string) []UserResponse{
+	var onlineUsers []UserResponse
+
+	docID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil{
+		return onlineUsers
+	}
 
 	collection := config.Client.Database(os.Getenv("MONGODB_DATABASE")).Collection("users")
-	context, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	cursor, queryError:= collection.Find(ctx, bson.M{
+		"online": "Y",
+		"_id": bson.M{
+			"$ne": docID,	// excludes the user itself
+		},
+	})
+	defer cursor.Close(ctx)
 
+	if queryError != nil {
+		return onlineUsers
+	}
+
+	for cursor.Next(context.TODO()) {
+		var user UserDetails
+		err := cursor.Decode(&user)
+
+		if err == nil{
+			onlineUsers = append(onlineUsers, UserResponse{
+				UserID: user.ID,
+				Username: user.Username,
+				Online: user.Online,
+			})
+		}
+	}
+
+	return onlineUsers
 }
 
 func StoreNewMessages(message MessagePayload) bool{
 	collection := config.Client.Database(os.Getenv("MONGODB_DATABASE")).Collection("messages")
 
-	context, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
+	_, registrationError := collection.InsertOne(ctx, bson.M{
+		"fromUserID": message.FromUserID,
+		"message":    message.Message,
+		"toUserID":   message.ToUserID,
+	})
+
+	if registrationError != nil{
+		return false
+	}
+	return true
 }
 
-func GetConversationBetweenTwoUsers(toUser, fromUser string) []Message{
+func GetConversationBetweenTwoUsers(toUser, fromUser string, page int64) []Message{
 	var conversation []Message
 	collection := config.Client.Database(os.Getenv("MONGODB_DATABASE")).Collection("messages")
+	var limit int64 = 20
 
-	context, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
+	queryHandler := bson.M{
+		"$or": []bson.M{
+			{
+				"toUserID": toUser,
+				"fromUserID": fromUser,
+			},
 
+			{
+				"fromUserID": fromUser,
+				"toUserID": toUser,
+			},
+		},
+	}
+
+	findOptions := options.Find()
+	findOptions.SetSort(bson.D{{"createdAt", -1}}) // 1= ascending, olderst to newest
+	findOptions.SetLimit(limit)
+	findOptions.SetSkip((page-1)*limit)
+
+	cursor, err := collection.Find(ctx, queryHandler, findOptions)
+	if err != nil{
+		return conversation
+	}
+	defer cursor.Close(ctx)
+
+	for cursor.Next(ctx){
+		var message Message
+		if err := cursor.Decode(&message); err == nil{
+			conversation = append(conversation, message)
+		}
+	}
+
+		// Optional: Reverse to display oldest-to-newest in UI
+		for i, j := 0, len(conversation)-1; i < j; i, j = i+1, j-1 {
+			conversation[i], conversation[j] = conversation[j], conversation[i]
+		}
+
+	return conversation
 }

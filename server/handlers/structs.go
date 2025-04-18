@@ -52,8 +52,8 @@ type Client struct {
 }
 
 type MessagePayload struct {
-	FromUserID string `json:"from_user_id" binding:"required"`
-	ToUserID   string `json:"to_user_id" binding:"required"`
+	FromUserID string `json:"fromUserID" binding:"required"`
+	ToUserID   string `json:"toUserID" binding:"required"`
 	Message    string `json:"message" binding:"required"`
 }
 
