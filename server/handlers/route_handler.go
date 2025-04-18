@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"http"
 	"net/http"
 	"regexp"
 
@@ -56,7 +55,7 @@ func IsUsernameAvailable() gin.HandlerFunc{
 				Status:  http.StatusText(http.StatusOK),
 				Message: constants.UsernameIsNotAvailable,
 				Response: usernameAvailable{
-					IsUsernameAvailable: isUsernameAvailable,
+					IsUsernameAvailable: false,
 				},
 			})
 		}
@@ -65,7 +64,7 @@ func IsUsernameAvailable() gin.HandlerFunc{
 
 func Login() gin.HandlerFunc{
 	return func(c *gin.Context){
-		var userDetails UserDetails
+		var userDetails LoginRequest
 
 		if err := c.ShouldBindJSON(&userDetails); err != nil{
 			c.JSON(http.StatusBadRequest, APIResponse{
@@ -77,12 +76,43 @@ func Login() gin.HandlerFunc{
 			return
 		}
 
+		if userDetails.Username == "" {
+			c.JSON(http.StatusBadRequest, APIResponse{
+				Code:     http.StatusBadRequest,
+				Status:   http.StatusText(http.StatusBadRequest),
+				Message:  constants.UsernameCantBeEmpty,
+				Response: nil,
+			})
+		}
+
+		if userDetails.Password == "" {
+			c.JSON(http.StatusInternalServerError, APIResponse{
+				Code:     http.StatusInternalServerError,
+				Status:   http.StatusText(http.StatusInternalServerError),
+				Message:  constants.PasswordCantBeEmpty,
+				Response: nil,
+			})
+	
+		}
+
+		userDetailsResponse, loginErrorMessage :=  LoginQueryHandler(userDetails)
+
+		if loginErrorMessage != nil {
+			c.JSON(http.StatusNotFound, APIResponse{
+				Code:     http.StatusNotFound,
+				Status:   http.StatusText(http.StatusNotFound),
+				Message:  loginErrorMessage.Error(),
+				Response: nil,
+			})
+			return
+		}
+
 		// succesfil login
 		c.JSON(http.StatusOK, APIResponse{
 			Code: http.StatusOK,
 			Status: http.StatusText(http.StatusOK),
 			Message: constants.UserLoginCompleted,
-			Response: userDetails,
+			Response: userDetailsResponse,
 		})
 	}
 }

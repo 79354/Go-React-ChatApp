@@ -56,8 +56,30 @@ func IsUsernameAvailableQueryHandler(username string) bool{
 	return false
 }
 
-func LoginQueryHandler(userDetails LoginRequest) (UserResponse, error){
+func LoginQueryHandler(userDetailsRequest LoginRequest) (UserResponse, error){
+	if userDetailsRequest.Username == "" {
+		return UserResponse{}, errors.New(constants.UsernameCantBeEmpty)
+	} else if userDetailsRequest.Password == "" {
+		return UserResponse{}, errors.New(constants.PasswordCantBeEmpty)
+	} else{
+		userDetails := GetUserByUsername(userDetailsRequest.Username)
+		if userDetails == (UserDetails{}){
+			return UserResponse{}, errors.New(constants.UserIsNotRegisteredWithUs)
+		}
 
+		if passErr := utils.VerifyPassword(userDetails.Password, userDetailsRequest.Password); passErr != nil{
+			return UserResponse{}, errors.New(constants.LoginPasswordIsInCorrect)
+		}
+
+		if onlineStatusErr := UpdateUserOnlineStatusByUserID(userDetails.ID, "Y"); onlineStatusErr != nil{
+			return UserResponse{}, errors.New(constants.LoginPasswordIsInCorrect)
+		}
+
+		return	UserResponse{
+			Username: userDetails.Username,
+			UserID: userDetails.ID,
+		}, nil
+	}
 }
 
 // check the username from the database
