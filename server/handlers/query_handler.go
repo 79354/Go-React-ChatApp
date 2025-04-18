@@ -12,7 +12,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
-	"golang.org/x/net/idna"
 )
 
 func UpdateUserOnlineStatusByUserID(userId, status string) error{
@@ -30,12 +29,31 @@ func GetUserByUsername(username string) UserDetails{
 	return userDetails
 }
 
-func GetUserByUserID(userID string) error{
+func GetUserByUserID(userID string) UserDetails{
+	var userDetails UserDetails
 
+	docID, err := primitive.ObjectIDFromHex(userID)
+	if err != nil{
+		return UserDetails{}
+	}
+
+	collection := config.Client.Database(os.Getenv("MONGODB_DATABASE")).Collection("users")
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+
+	_ = collection.FindOne(ctx, bson.M{
+		"_id": docID,
+	}).Decode(&userDetails)
+	
+	cancel()
+	return	userDetails
 }
 
-func IsUsernameAvailableQueryHandler(username string) error{
-
+func IsUsernameAvailableQueryHandler(username string) bool{
+	userDetails := GetUserByUsername(username)
+	if userDetails == (UserDetails{}){
+		return true
+	}
+	return false
 }
 
 func LoginQueryHandler(userDetails LoginRequest) (UserResponse, error){

@@ -23,6 +23,10 @@ func RenderHome() gin.HandlerFunc{
 
 func IsUsernameAvailable() gin.HandlerFunc{
 	return func(c *gin.Context){
+		type usernameAvailable struct{
+			IsUsernameAvailable bool `json:"isUsernameAvailable"`
+		}
+		
 		username:= c.Param("username")
 		isAlphaNumeric := regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9_-]*[A-Za-z0-9])?$`).MatchString
 
@@ -30,8 +34,30 @@ func IsUsernameAvailable() gin.HandlerFunc{
 			c.JSON(http.StatusBadRequest, APIResponse{
 				Code: http.StatusBadRequest,
 				Status: http.StatusText(http.StatusBadRequest),
-				Message: constants.APIWelcomeMessage,
+				Message: constants.UsernameCantBeEmpty,
 				Response: nil,
+			})
+			return
+		}
+
+		isUsernameAvailable := IsUsernameAvailableQueryHandler(username)
+		if isUsernameAvailable{
+			c.JSON(http.StatusOK, APIResponse{
+				Code: http.StatusOK,
+				Status: http.StatusText(http.StatusOK),
+				Message: constants.UsernameIsAvailable,
+				Response: usernameAvailable{
+					IsUsernameAvailable: true,
+				},
+			})
+		}else{
+			c.JSON(http.StatusOK, APIResponse{
+				Code:    http.StatusOK,
+				Status:  http.StatusText(http.StatusOK),
+				Message: constants.UsernameIsNotAvailable,
+				Response: usernameAvailable{
+					IsUsernameAvailable: isUsernameAvailable,
+				},
 			})
 		}
 	}
