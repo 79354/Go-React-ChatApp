@@ -21,9 +21,9 @@ func (lobby *Lobby) Run(){
 	for {
 		select	{
 		case client := <- lobby.register:
-			
+			HandleUserRegisterEvent(lobby, client)
 		case client := <- lobby.unregister:
-			
+			HandleUserDisconnectEvent(lobby, client)
 		}
 	}
 }

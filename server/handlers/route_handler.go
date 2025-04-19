@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"log"
 	"net/http"
 	"regexp"
+	"strconv"
 
 	"chat-app/constants"
 
@@ -176,12 +178,75 @@ func Registration() gin.HandlerFunc{
 
 func UserSessionCheck() gin.HandlerFunc{
 	return func(c *gin.Context){
-		
+		var IsAlphaNumeric = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9_-]*[A-Za-z0-9])?$`).MatchString
+		uid := c.Param("userID")
+
+		if !IsAlphaNumeric(uid){
+			c.JSON(http.StatusBadRequest, APIResponse{
+				Code:     http.StatusBadRequest,
+				Status:   http.StatusText(http.StatusBadRequest),
+				Message:  constants.UsernameCantBeEmpty,
+				Response: nil,
+			})
+			return
+		}
+
+		userDetails := GetUserByUserID(uid)
+		if userDetails == (UserDetails{}){
+			c.JSON(http.StatusOK, APIResponse{
+				Code:     http.StatusOK,
+				Status:   http.StatusText(http.StatusOK),
+				Message:  constants.YouAreNotLoggedIN,
+				Response: false,
+			})
+			return
+		}
+
+		c.JSON(http.StatusOK, APIResponse{
+			Code: http.StatusOK,
+			Status: http.StatusText(http.StatusOK),
+			Message: constants.YouAreLoggedIN,
+			Response: userDetails.Online == "Y",
+		})
 	}
 }
 
 func GetMessagesHandler() gin.HandlerFunc{
 	return func(c *gin.Context){
-		
+		var IsAlphaNumeric = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9_-]*[A-Za-z0-9])?$`).MatchString
+		toUserID := c.Param("toUserID")
+		fromUserID := c.Param("fromUserID")
+
+		if !IsAlphaNumeric(toUserID) {
+			c.JSON(http.StatusBadRequest, APIResponse{
+				Code:     http.StatusBadRequest,
+				Status:   http.StatusText(http.StatusBadRequest),
+				Message:  constants.UsernameCantBeEmpty,
+				Response: nil,
+			})
+			return
+		} else if !IsAlphaNumeric(fromUserID) {
+			c.JSON(http.StatusBadRequest, APIResponse{
+				Code:     http.StatusBadRequest,
+				Status:   http.StatusText(http.StatusBadRequest),
+				Message:  constants.UsernameCantBeEmpty,
+				Response: nil,
+			})
+			return
+		}
+
+		page, err := strconv.Atoi(c.Query("page"))
+		if err != nil{
+			log.Panic(err)
+		}
+		var pagee int64 = int64(page)
+
+		conversations := GetConversationBetweenTwoUsers(toUserID, fromUserID, pagee)
+		c.JSON(http.StatusOK, APIResponse{
+			Code:     http.StatusOK,
+			Status:   http.StatusText(http.StatusOK),
+			Message:  constants.SuccessfulResponse,
+			Response: conversations,
+		})
 	}
 }

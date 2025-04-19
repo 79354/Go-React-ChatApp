@@ -67,10 +67,7 @@ func GetUserByUserID(userID string) UserDetails{
 
 func IsUsernameAvailableQueryHandler(username string) bool{
 	userDetails := GetUserByUsername(username)
-	if userDetails == (UserDetails{}){
-		return true
-	}
-	return false
+	return userDetails == (UserDetails{})
 }
 
 func LoginQueryHandler(userDetailsRequest LoginRequest) (UserResponse, error){
@@ -189,10 +186,7 @@ func StoreNewMessages(message MessagePayload) bool{
 		"toUserID":   message.ToUserID,
 	})
 
-	if registrationError != nil{
-		return false
-	}
-	return true
+	return registrationError == nil
 }
 
 func GetConversationBetweenTwoUsers(toUser, fromUser string, page int64) []Message{
