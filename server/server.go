@@ -49,4 +49,16 @@ func routes(router *gin.Engine) {
 	router.GET("/UserSessionCheck/:userID", handlers.UserSessionCheck())
 	router.GET("/getConversation/:toUserID/:fromUserID", handlers.GetMessagesHandler())
 
+	router.GET("/ws/:userID", func(c *gin.Context){
+		userID := c.Param("userID")
+
+		// upgrade the HTTP connection to WebSocket connection
+		conn, err := handlers.Upgrader.Upgrade(c.Writer, c.Request, nil)
+		if err != nil{
+			log.Println("Failed to upgrade connection: ", err)
+			return
+		}
+
+		handlers.CreateClient(lobby, conn, userID)
+	})
 }

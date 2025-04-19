@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"net/http"
 	"bytes"
 	"encoding/json"
 	"log"
@@ -10,11 +11,22 @@ import (
 )
 
 const (
-	writeWait = 10 *time.Second
-	pongWait = 60 *time.Second
-	pingPeriod = (pongWait*9)/ 10
-	maxMessageSize = 512
+	writeWait = 10 *time.Second		// prevents server hang, conn doesnt wait forever to send
+	pongWait = 60 *time.Second		// keeps the server waiting too long, if client disconnects
+	pingPeriod = (pongWait*9)/ 10   // sends regular pings to check if client is active
+	maxMessageSize = 512			// prevents memory abuse
 )
+
+// Upgrader specifies parameters for upgrading an HTTP connection to a WebSocket connection
+var Upgrader = websocket.Upgrader{
+    ReadBufferSize:  1024,
+    WriteBufferSize: 1024,
+    // This CheckOrigin function allows connections from any origin
+    // In production, you might want to be more restrictive
+    CheckOrigin: func(r *http.Request) bool {
+        return true
+    },
+}
 
 func HandleSocketPayloadEvents(client *Client, socketEventPayload SocketEvent){
 	type chatListResponse struct{
@@ -31,8 +43,9 @@ func HandleSocketPayloadEvents(client *Client, socketEventPayload SocketEvent){
 			log.Println("An invalid user with userID " + userID + " tried to connect to Chat Server.")
 		} else{
 			if userDetails.Online == "N"{
-				log.Println("A logged out user with userID " + userID + " tried to connect to Chat Server.")
+				log.Println(userID + " tried to connect to Chat Server.")
 			}else{
+				// Announce in the chatlist arrival of new client
 				newUserOnlinePayload := SocketEvent{
 					EventName: "chatlist-response",
 					EventPayload: chatListResponse{
@@ -47,6 +60,7 @@ func HandleSocketPayloadEvents(client *Client, socketEventPayload SocketEvent){
 
 				BroadcastToEveryoneExceptme(client.Lobby, newUserOnlinePayload, userID)
 
+				// For the client to see everyone that's online
 				allOnlineUsersPayload := SocketEvent{
 					EventName: "chatlist-response",
 					EventPayload: chatListResponse{
@@ -77,6 +91,9 @@ func HandleSocketPayloadEvents(client *Client, socketEventPayload SocketEvent){
 			})
 		}
 	case "message":
+		//decoding JSON into Go types using the encoding/json package without a struct, Go uses this:
+		//  map[string]interface{}
+
 		message	   := (socketEventPayload.EventPayload.(map[string]interface{})["message"]).(string)
 		toUserID   := (socketEventPayload.EventPayload.(map[string]interface{})["toUserID"]).(string)
 		fromUserID := (socketEventPayload.EventPayload.(map[string]interface{})["fromUserID"]).(string)
@@ -100,8 +117,8 @@ func HandleSocketPayloadEvents(client *Client, socketEventPayload SocketEvent){
 
 func setSocketPayloadReadConfig(c *Client){
 	c.Conn.SetReadLimit(maxMessageSize)
-	c.Conn.SetReadDeadline(time.Now().Add(pongWait))
-	c.Conn.SetPongHandler(func (string) error { c.Conn.SetReadDeadline(time.Now().Add(pongWait)); return nil })
+	c.Conn.SetReadDeadline(time.Now().Add(pongWait))	// deadline for pong reponse
+	c.Conn.SetPongHandler(func (string) error { c.Conn.SetReadDeadline(time.Now().Add(pongWait)); return nil }) // extends the pong deadline
 }
 
 // client stays in the lobby, but client side Conn is closed
@@ -139,7 +156,12 @@ func (c *Client) readPump(){
 	}
 }
 
+// sends mssg, from: server to client
+// batches the messages
+// sends periodic ping
+// cleans up gracefully on errors or disconnects
 func (c *Client) writePump(){
+	// starts a ticker to trigger pings every pingPeriod(54 seconds)
 	ticker := time.NewTicker(pingPeriod)
 	defer func(){
 		ticker.Stop()
@@ -178,6 +200,7 @@ func (c *Client) writePump(){
 				return
 			}
 
+		// This sends a ping message every pingPeriod to check if the client is still connected.
 		case <-ticker.C:
 			c.Conn.SetWriteDeadline(time.Now().Add(writeWait))
 			if err := c.Conn.WriteMessage(websocket.PingMessage, nil); err != nil{
@@ -195,8 +218,8 @@ func CreateClient(lobby *Lobby, connection *websocket.Conn, userID string){
 		UserID: userID,
 	}
 
-	go client.writePump()
-	go client.readPump()
+	go client.writePump() // uses ping, mssg: server 
+	go client.readPump() // uses pong
 
 	client.Lobby.register <- client
 }
